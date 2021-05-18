@@ -30,7 +30,7 @@ mapping (uint => string) userIdToName;
 
 매핑은 기본적으로 키-값(`key-value`) 저장소로, 데이터를 저장하고 검색하는 데 이용된다. 첫번째 예시에서 키는 `address`이고 값은 `uint`이다. 두번째 예시에서 키는 `uint`이고 값은 `string`이다.
 
-## **1. Msg.sender**
+## **2. Msg.sender**
 
 솔리디티에는 모든 함수에서 이용 가능한 특정 전역 변수들이 있다. 그 중의 하나가 현재 함수를 호출한 사람(혹은 스마트 컨트랙트)의 주소를 가르키는 msg.sender이다.
 
@@ -57,3 +57,60 @@ function whatIsMyNumber() public view returns (uint) {
 위의 예시에서는 누구나 `setMyNumber`을 호출하여 본인의 주소와 연결된 컨트랙트 내에 `uint`를 저장할 수 있다.
 
 `msg.sender`를 활용하면 이더리움 블록체인의 보안성을 이용할 수 있게 된다. 즉, 누군가 다른 사람의 데이터를 변경하려면 해당 이더리움 주소와 관련된 개인키를 훔치는 것 밖에는 다른 방법이 없다는 것이다.
+
+## **3. Require**
+
+`requre`를 활용하면 특정 조건이 참이 아닐 때 함수가 에러 메시지를 발생하고 실행을 멈추게 된다 :
+
+```sol
+function sayHiToVitalik(string_name) public returns (string) {
+    // _name이 "Vitalik"인지 비교하고 참이 아닐 경우 에러 메시지를 발생하고 함수를 벗어난다
+    // (참고 : 솔리디티는 고유의 스트링 비교 기능을 가지고 있지 않기 때문에 스트링의 keccak256 해시값을 비교하여 스트링 값이 같은지 판단한다)
+    require(keccak256(_name) == keccak256("Vitalik"));
+    // 참이면 함수를 실행한다 :
+    return "Hi";
+}
+```
+
+`sayHiToVitalik("Vitalik")`로 이 함수를 실행하면 `Hi!`가 반환될 것이다. `Vitalik`이 아닌 다른 값으로 이 함수를 호출할 경우, 에러 메시지가 뜨고 함수가 실행되지 않을 것이다.
+
+`require`는 함수를 실행하기 전에 참이어야 하는 특정 조건을 확인하는 데 있어 유용하다.
+
+## 4. 상속
+
+코드가 늘어나서 긴 컨트랙트 하나를 만들기 보다는 코드를 잘 정리해서 여러 컨트랙트에 코드 로직을 나누는 것이 합리적일 때가 있다.
+
+이를 보다 관리하기 쉽도록 하는 솔리디티 기능이 바로 컨트랙트 `상속`이다 :
+
+```sol
+contract Doge {
+    function catchphrase() public returns (string) {
+        return "So Wow CryptoDoge";
+    }
+}
+
+contract BabyDoge is Doge {
+    function anotherCatchphrase() public returns (string) {
+        return "Such Moon BabyDoge";
+    }
+}
+```
+
+`BabyDoge` 컨트랙트는 `Doge` 컨트랙트를 상속한다. 즉, `BabyDoge` 컨트랙트를 컴파일해서 구축할 때, `BabyDoge` 컨트랙트가 `catchphrase()` 함수와 `anotherCatchphrase()` 함수에 모두 접근할 수 있다는 뜻이다. 
+(`Doge` 컨트랙트에 다른 어떤 public 함수가 정의되어도 접근이 가능하다)
+
+상속 개념은 `"고양이는 동물이다"`의 경우처럼 부분집합 클래스가 있을 때 논리적 상속을 위해 활용할 수 있다. 하지만 또한 로직을 다수의 클래스로 분할해서 단순히 코드를 정리할 때도 활용할 수 있다.
+
+## 5. Import
+
+다수의 파일이 있고 어떤 파일을 다른 파일로 불러오고 싶을 때 솔리디티는 `import`라는 키워드를 이용한다 :
+
+```sol
+import "./someothercontract.sol";
+
+contract newContract is SomeOtherContract {
+
+}
+```
+
+이 컨트랙트와 동일한 폴더에 `(./)` `someothercontract.sol`이라는 파일이 있을 때 이 파일을 컴파일러가 불러오게 된다.
