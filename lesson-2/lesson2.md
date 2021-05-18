@@ -113,4 +113,4 @@ contract newContract is SomeOtherContract {
 }
 ```
 
-이 컨트랙트와 동일한 폴더에 `(./)` `someothercontract.sol`이라는 파일이 있을 때 이 파일을 컴파일러가 불러오게 된다.
+이 컨트랙트와 동일한 폴더에 (`./`) `someothercontract.sol`이라는 파일이 있을 때 이 파일을 컴파일러가 불러오게 된다.
