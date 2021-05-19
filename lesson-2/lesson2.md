@@ -114,3 +114,46 @@ contract newContract is SomeOtherContract {
 ```
 
 이 컨트랙트와 동일한 폴더에 (`./`) `someothercontract.sol`이라는 파일이 있을 때 이 파일을 컴파일러가 불러오게 된다.
+
+## 6. Storage vs Memory
+
+솔리디티에는 변수를 저장할 수 있는 공간으로 `storage`와 `memory` 두가지가 있다.
+
+`Storage`는 블록체인 상에 영구적으로 저장되는 변수이다. `Memory`는 임시적으로 저장되는 변수로, 컨트랙트 함수에 대한 외부 호출들이 일어나는 사이에 지워진다. 두 변수는 각각 컴퓨터 하드 디스크와 RAM과 같다.
+
+대부분의 경우에 사용자가 이런 키워드들을 이용할 필요가 없다. 솔라디티가 알아서 처리해 주기 때문이다. 상태변수(함수 외부에 선언된 변수)는 초기 설정 상 `storage`로 선언되어 블록체인에 영구적으로 저장되는 반면, 함수 내에 선언된 변수는 `memory`로 자동 선언되어서 함수 호출이 종료되면 사라진다.
+
+하지만 이 키워드들을 사용해야하는 때가 있다. 바로 함수 내의 `구조체`와 `배열`을 처리할 때다 :
+
+```sol
+contract SandwichFactory {
+    struct Sandwitch {
+        string name;
+        string status;
+    }
+
+    Sandwich[] sandwiches;
+
+    function eatSandwich(uint _index) public {
+        // Sandwich mySandwich = sandwich[_index];
+
+        // 꽤 간단해 보이나, 솔리디티는 여기서 storage나 memory를 명시적으로 선언해야 한다는 경고 메시지를 발생한다
+        // 그러므로 storage 키워드를 활용하여 다음과 같이 선언해야 한다 :
+        Sandwich storage mySandwich = sandwich[_index];
+        // 이 경우, mySandwich는 저장된 sandwich[_index]를 가리키는 포인터이다
+        mySandwich.status = "Eaten!";
+        // 이 코드는 블록체인 상에서 'sandwiches[_index]`을 영구적으로 변경한다
+
+        // 단순히 복사를 하고자 한다면 memory를 이용하면 된다 :
+        Sandwich memory anotherSandwich = sandwiches[_index + 1];
+        // 이 경우, anotherSandwich는 단순히 메모리에 데이터를 복사하는 것이 된다
+        anotherSandwich.status = "Eaten!";
+        // 이 코드는 임시변수인 anotherSandwich를 변경하는 것으로 sandwich[_index + 1]에는 아무런 영향을 끼치지 않는다
+        // 그러나 다음과 같이 코드를 작성할 수 있다 :
+        sandwiches[_index + 1] = anotherSandwich;
+        // 이는 임시 변경한 내용을 블록체인 저장소에 저장하고자 하는 경우이다
+    }
+}
+```
+
+지금으로썬 명시적으로 `storage`나 `memory`를 선언할 필요가 있는 경우가 있다는 걸 이해하는 것만으로도 충분하다.
