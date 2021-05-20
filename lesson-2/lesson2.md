@@ -76,7 +76,7 @@ function sayHiToVitalik(string_name) public returns (string) {
 
 `require`는 함수를 실행하기 전에 참이어야 하는 특정 조건을 확인하는 데 있어 유용하다.
 
-## 4. 상속
+## **4. 상속**
 
 코드가 늘어나서 긴 컨트랙트 하나를 만들기 보다는 코드를 잘 정리해서 여러 컨트랙트에 코드 로직을 나누는 것이 합리적일 때가 있다.
 
@@ -101,7 +101,7 @@ contract BabyDoge is Doge {
 
 상속 개념은 `"고양이는 동물이다"`의 경우처럼 부분집합 클래스가 있을 때 논리적 상속을 위해 활용할 수 있다. 하지만 또한 로직을 다수의 클래스로 분할해서 단순히 코드를 정리할 때도 활용할 수 있다.
 
-## 5. Import
+## **5. Import**
 
 다수의 파일이 있고 어떤 파일을 다른 파일로 불러오고 싶을 때 솔리디티는 `import`라는 키워드를 이용한다 :
 
@@ -115,7 +115,7 @@ contract newContract is SomeOtherContract {
 
 이 컨트랙트와 동일한 폴더에 (`./`) `someothercontract.sol`이라는 파일이 있을 때 이 파일을 컴파일러가 불러오게 된다.
 
-## 6. Storage vs Memory
+## **6. Storage vs Memory**
 
 솔리디티에는 변수를 저장할 수 있는 공간으로 `storage`와 `memory` 두가지가 있다.
 
@@ -157,3 +157,77 @@ contract SandwichFactory {
 ```
 
 지금으로썬 명시적으로 `storage`나 `memory`를 선언할 필요가 있는 경우가 있다는 걸 이해하는 것만으로도 충분하다.
+
+## **7. 함수 접근 제어자 더 알아보기**
+
+### **Internal과 External**
+
+`public`과 `private` 이외에도 솔리디티에는 `internal`과 `external`이라는 함수 접근 제어자가 있다.
+
+`internal`은 함수가 정의된 컨트랙트를 상속하는 컨트랙트에서도 접근이 가능하다는 점을 제외하면 `private`함수와 동일하다.
+
+`external`은 함수가 컨트랙트 바깥에서만 호출될 수 있고 컨트랙트 내의 다른 함수에 의해 호출될 수 없다는 점을 제외하면 `public`과 동일하다.
+
+`internal`이나 `external`함수를 선언하는 건 `private`과 `public`함수를 선언하는 구문과 동일하다 :
+
+```sol
+contract Sandwich {
+    uint private sandwichesEaten = 0;
+
+    function eat() internal {
+        sandwichesEaten++;
+    }
+}
+
+contract BLT is Sandwich {
+    uint private baconSandwichesEaten = 0;
+
+    function eatWithBacon() public returns (string) {
+        baconSandwichesEaten++;
+        // eat 함수가 internal로 선언되었기 때문에 여기서 호출이 가능하다
+        eat();
+    }
+}
+```
+
+## **8. 다른 컨트랙트와 상호작용하기**
+
+블록체인 상에 있으면서 우리가 소유하지 않은 컨트랙트와 우리 컨트랙트가 상호작용을 하려면 우선 `인터페이스`를 정의해야 한다.
+
+예를들어 다음과 같은 블록체인 컨트랙트가 있다고 해보자 :
+
+```sol
+contract LuckyNumber {
+    mapping(address => uint) numbers;
+
+    function setNum(uint _num) public {
+        numbers[msg.sender] = _num;
+    }
+
+    function getNum(address _myAddress) public view returns (uint) {
+        return numbers[_myAddress];
+    }
+}
+```
+
+이 컨트랙트는 아무나 자신의 행운의 수를 저장할 수 있는 간단한 컨트랙트이고, 각자의 이더리움 주소와 연관이 있을 것이다. 이 주소를 이용해서 누구나 그 사람의 행운의 수를 찾아볼 수 있다.
+
+이제 `getNum`함수를 이용하여 이 컨트랙트에 있는 데이터를 읽고자 하는 `external`함수가 있다고 해보자.
+
+먼저, `LuckyNumber` 컨트랙트의 `인터페이스`를 정의할 필요가 있다 :
+
+```sol
+contract NumberInterface {
+    function getNum(address _myAddress) public view returns (uint);
+}
+```
+
+약간 다르지만, 인터페이스를 정의하는 것이 컨트랙트를 정의하는 것과 유사하다는 걸 참고하자. 먼저, 다른 컨트랙트와 상호작용하고자 하는 함수만을 선언할 뿐(이 경우, `getNum`이 바로 그러한 함수이다) 다른 함수나 상태 변수를 언급하지 않는다.
+
+다음으로, 함수 몸체를 정의하지 않는다. 중괄호 `{`, `}`를 쓰지 않고 함수 선언을 세미콜론(`;`)으로 간단하게 끝낸다.
+
+그러니 인터페이스는 컨트랙트 뼈대처럼 보인다고 할 수 있다. 컴파일러도 그렇게 인터페이스를 인식한다.
+
+`dapp`코드에 이런 인터페이스를 포함하면 컨트랙트는 다른 컨트랙트에 정의된 함수의 특성, 호출 방법, 예상되는 응답 내용에 대해 알 수 있게 된다.
+
+> *참고 : 솔라디티에서는 함수가 하나 이상의 값을 반환할 수 있다*
