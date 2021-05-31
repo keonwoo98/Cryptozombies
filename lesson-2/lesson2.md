@@ -135,11 +135,11 @@ contract SandwichFactory {
     Sandwich[] sandwiches;
 
     function eatSandwich(uint _index) public {
-        // Sandwich mySandwich = sandwich[_index];
+        // Sandwich mySandwich = sandwiches[_index];
 
         // 꽤 간단해 보이나, 솔리디티는 여기서 storage나 memory를 명시적으로 선언해야 한다는 경고 메시지를 발생한다
         // 그러므로 storage 키워드를 활용하여 다음과 같이 선언해야 한다 :
-        Sandwich storage mySandwich = sandwich[_index];
+        Sandwich storage mySandwich = sandwiches[_index];
         // 이 경우, mySandwich는 저장된 sandwich[_index]를 가리키는 포인터이다
         mySandwich.status = "Eaten!";
         // 이 코드는 블록체인 상에서 'sandwiches[_index]`을 영구적으로 변경한다
@@ -247,7 +247,7 @@ contract NumberInterface {
 ```sol
 contract MyContract {
     address NumberInterfaceAddress = 0xab38...
-    // 이더리움상의 FavoriteNumber 컨트랙트 주소이다
+    // ^ 이더리움상의 FavoriteNumber 컨트랙트 주소이다
     NumberInterface numberContract = NumberInterface(NumberInterfaceAddress)
     // 이제 numberContract는 다른 컨트랙트를 가리키고 있다
 
@@ -260,3 +260,5 @@ contract MyContract {
 ```
 
 이런 식으로 나의 컨트랙트가 이더리움 블록체인상의 다른 어떤 컨트랙트와도 상호작용할 수 있다. 물론 상호작용하는 함수가 `public`이나 `external`로 선언되어 있어야 한다.
+
+## **10. **
