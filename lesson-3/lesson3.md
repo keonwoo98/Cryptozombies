@@ -26,7 +26,43 @@ lesson2에서 우리는 크립토키티 컨트랙트의 주소를 우리 `DApp`�
 
 그렇다고 `setKittyContractAddress`함수를 `external`로 선언해주면 누구든 이 함수를 호출할 수 있기 때문에 아무나 크립토키티 컨트랙트의 주소를 바꿀 수 있게 되어서 앱을 무용지물로 만들어 버릴 수가 있다.
 
-이런 경우를 대처하기 위해서, 최근에 주로 쓰는 하나의 방법은 컨트랙트를 `소유 기능`하게 만드는 것이다. 컨트랙트를 대상으로 특별한 권리를 가지는 소유자가 있음을 의미하는 것이다.
+이런 경우를 대처하기 위해서, 최근에 주로 쓰는 하나의 방법은 컨트랙트를 `소유 가능`하게 만드는 것이다. 컨트랙트를 대상으로 특별한 권리를 가지는 소유자가 있음을 의미하는 것이다.
 
 ### **OpenZeppelin의 `Ownable` 컨트랙트**
 
+아래에 나와있는 것은 `OpenZeppelin` 솔리디티 라이브러리에서 가져온 `Ownable` 컨트랙트이다. `OpenZeppelin` 은 `DApp` 에서 사용할 수 있는, 안전하고 커뮤니티에서 검증받은 스마트 컨트랙트의 라이브러리다.
+
+```sol
+/*
+@title Ownable
+@dev The Ownable contract has an owner address, and provides basic authorization control functions, this simplifies the implementation of "user permissions".
+*/
+contract Ownable {
+    address public owner;
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
+    /*
+    @dev The Ownable constructor sets the original `owner` of the contract to the sender account.
+    */
+    function Ownable() public {
+        owner = msg.sender;
+    }
+
+    /*
+    @dev Throws if called by any account other than the owner.
+    */
+    modifier onlyOwner() {
+        require(msg.sender == owner);
+    }
+
+    /*
+    @dev Allows the current owner to transfer control of the contract to a newOwner.
+    @param newOwner The address to transfer ownership to.
+    */
+    function transferOwnership(address newOwner) public onlyOwner {
+        require(newOwner != address(0));
+        OwnershipTransferred(owner, newOwner);
+        owner = newOwner;
+    }
+}
+```
