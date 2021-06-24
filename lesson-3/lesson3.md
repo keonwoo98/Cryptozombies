@@ -53,6 +53,7 @@ contract Ownable {
     */
     modifier onlyOwner() {
         require(msg.sender == owner);
+        _;
     }
 
     /*
@@ -82,4 +83,46 @@ contract Ownable {
 3. 새로운 `소유자`에게 해당 컨트랙트의 소유권을 옮길 수 있도록 한다.
 
 `onlyOwner`는 컨트랙트에서 흔히 쓰는 것 중 하나라, 대부분의 솔리디티 DApp들은 `Ownable`컨트랙트를 복사/붙여넣기 하면서 시작한다. 그리고 첫 컨트랙트는 이 컨트랙트를 상속해서 만든다.
+
+## **3. onlyOwner 함수 제어자**
+
+이제 기본 컨트랙트인 `ZombieFactory`가 `Ownable`을 상속하고 있으니, `onlyOwner`함수 제어자를 `ZombieFeeding`에서도 사용할 수 있게 되었다.
+
+이건 컨트랙트가 상속되는 구조 때문이다. 아래 내용을 기억하자 :
+
+```
+ZombieFeeding is ZombieFactory
+ZombieFactory is Ownable
+```
+
+그렇기 때문에 `ZombieFeeding` 또한 `Ownable`이고, `Ownable` 컨트랙트의 함수/이벤트/제어자에 접근할 수 있다. 이건 향후에 `ZombieFeeding`을 상속하는 다른 컨트랙트들에도 마찬가지로 적용된다.
+
+### **함수 제어자**
+
+함수 제어자는 함수처럼 보이지만, `function`키워드 대신 `modifier`키워드를 사용한다. 그리고 함수를 호출하듯이 직접 호출할 수 없다. 대신에 함수 정의부 끝에 해당 함수의 작동 방식을 바꾸도록 제어자의 이름을 붙일 수 있다.
+
+`onlyOwner`를 살펴보면서 더 자세히 알아보자 :
+
+```sol
+/*
+@dev Throws if called by any account other than the owner.
+*/
+modifier onlyOwner() {
+    require(msg.sender == owner);
+    _;
+}
+```
+
+우리는 이 제어자를 다음과 같이 사용할 것이다 :
+
+```sol
+contract MyContract is Ownable {
+    event LaughManiacally(string laughter);
+
+    // 아래 `onlyOwner`의 사용 방법을 잘 보자 :
+    function likeABoss() external onlyOwner {
+        LaughManiacally("Muahahahaha");
+    }
+}
+```
 
