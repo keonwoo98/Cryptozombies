@@ -1,4 +1,5 @@
-pragma solidity ^0.4.25;
+pragma solidity >=0.5.0;
+
 import "./zombiefeeding.sol";
 contract ZombieHelper is ZombieFeeding {
 
@@ -28,5 +29,4 @@ contract ZombieHelper is ZombieFeeding {
     }
     return result;
   }
-
 }

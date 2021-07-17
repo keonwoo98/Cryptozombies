@@ -1,4 +1,4 @@
-pragma solidity ^0.4.25;
+pragma solidity >=0.5.0;
 
 import "./ownable.sol";
 
@@ -40,5 +40,4 @@ contract ZombieFactory is Ownable {
         randDna = randDna - randDna % 100;
         _createZombie(_name, randDna);
     }
-
 }
