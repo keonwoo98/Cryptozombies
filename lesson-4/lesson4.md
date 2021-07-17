@@ -55,3 +55,49 @@ OnlineStore.buySomething({from: web3.eth.defaultAccount, value: web3.utils.toWie
 `value`필드를 주목해보자. 자바스크립트 함수 호출에서 이 필드를 통해 `ether`를 얼마나 보낼지 결정한다. (여기서는 0.001) 트랜잭션을 봉투로 생각하고 함수 호출에 전달하는 매개 변수를 내가 써넣은 편지의 내용이라고 생각한다면, `value`는 봉투 안에 현금을 넣는 것과 같다. 편지와 돈 모두 수령인에게 전달된다.
 
 > *참고 : 만약 함수가 `payable`로 표시되지 않았는데 위에서 본 것처럼 이더를 보내려 한다면, 함수에서 나의 트랜잭션을 거부할 것이다.*
+
+## **2. 출금**
+
+컨트랙트로 이더를 보내면, 해당 컨트랙트의 이더리움 계좌에 이더가 저장되고 거기에 갇히게 된다. 컨트랙트로부터 이더를 인출하는 함수를 만들지 않는다면 말이다.
+
+다믕과 같이 컨트랙트에서 이더를 인출하는 함수를 작성할 수 있다 :
+```sol
+contract GetPaid is Ownable {
+    function withdraw() external onlyOwner {
+        owner.transfer(this.balance);
+    }
+}
+```
+
+우리가 `Ownable`컨트랙트를 import했다고 가정하고 `owner`와 `onlyOwner`를 사용하고 있다는 것을 참고하자.
+
+`transfer`함수를 사용하면 이더를 특정 주소로 전달할 수 있다. 그리고 `this.balance`는 컨트랙트에 저장돼있는 전체 잔액을 반환한다. 그러니 100명의 사용자가 우리의 컨트랙트에 1이더를 지불했다면, `this.balance`는 100이더가 될 것이다.
+
+`transfer`함수를 쓰면 특정한 이더리움 주소에 돈을 보낼 수 있다. 예를 들어, 만약 누군가 한 아이템에 대해 초과 지불했다면, 이더를 `msg.sender`로 되돌려주는 함수를 만들 수도 있다 :
+```sol
+uint itemFee = 0.001 ether;
+mas.sender.transfer(msg.value - itemFee);
+```
+
+혹은 구매자와 판매자가 존재하는 컨트랙트에서, 판매자의 주소를 storage에 저장하고, 누군가 판매자의 아이템을 구매하면 구매자로부터 받은 요금을 그에게 전달할 수도 있다 : `seller.transfer(msg.value)`.
+
+이런 것들이 이더리움 프로그래밍을 아주 멋지게 만들어주는 예시들이다. 이것처럼 누구에게도 제어되지 않는 분산 장터들을 만들 수도 있다.
+
+## **3. 난수**
+
+### **keccak256을 통한 난수 생성**
+
+솔리디티에서 난수를 만들기에 가장 좋은 방법은 `keccak256` 해시 함수를 쓰는 것이다.
+
+다음과 같은 방식으로 난수를 만들어낼 수 있다 :
+```sol
+// Generate a random number between 1 and 100 :
+uint randNonce = 0;
+utin random = uint(keccak256(now, msg.sender, randNonce)) % 100;
+randNonce++;
+uint random2 = uint(keccack256(now, msg.sender, randNonce)) % 100;
+```
+
+이 예시는 `now`의 타임스탬프 값, `msg.sender`, 증가하는 `nonce` (딱 한 번만 사용되는 숫자, 즉 똑같은 입력으로 두 번 이상 동일한 해시 함수를 실행할 수 없게 함)를 받고 있다.
+
+그리고서 `keccak`을 사용하여 이 입력들을 임의의 해시 값으로 변환하고, 해시 값을 `uint`로 바꾼 후, `% 100`을 써서 마지막 2자리 숫자만 받도록 했다. 이를 통해 0과 99 사이의 완전한 난수를 얻을 수 있다.
