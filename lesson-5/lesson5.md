@@ -19,3 +19,150 @@
 이러한 것의 한 예로는 거래소가 있다. 한 거래소에서 새로운 `ERC20 토큰`을 상장할 때, 실제로는 이 거래소에서 통신이 가능한 또 하나의 스마트 컨트랙트를 추가하는 것이다. 사용자들은 이 컨트랙트에 거래소의 지갑 주소에 토큰을 보내라고 할 수 있고, 거래소에서는 이 컨트랙트에 사용자들이 출금을 신청하면 토큰을 다시 돌려보내라고 할 수 있게 만드는 것이다.
 
 거래소에서는 이 전송 로직을 한 번만 구현하면 된다. 그리고서 새로운 `ERC20 토큰`을 추가하고 싶으면, 데이터베이스에 단순히 새 컨트랙트 주소를 추가하기만 하면 되는 것이다.
+
+### **다른 토큰 표준**
+
+`ERC20 토큰`은 화폐처럼 사용되는 토큰으로는 적절하다. 하지만 우리의 좀비 게임에서 좀비를 표현할 때에는 그다지 쓸모 있진 않다.
+
+첫째로, 좀비는 화폐처럼 분할할 수가 없다. 내가 누군가에게 `0.237ETH`를 보낼 수는 있지만, 0.237개의 좀비를 보낼 수는 없다.
+
+둘째로, 모든 좀비가 똑같지는 않다. 나의 좀비와 다른 어느 사용자의 좀비는 완전히 다르다.
+
+여기에 크립토좀비와 같은 크립토 수집품을 위해 더 적절한 토큰 표준이 있다. 바로 `ERC721 토큰`이다.
+
+`ERC721 토큰`은 대체 불가능하다. 각각의 토큰이 유일하고 분할이 불가하기 때문이다. 이 토큰은 하나의 전체 단위로만 거래할 수 있고, 각각의 토큰은 고유한 `ID`를 가지고 있다. 때문에 이 방법이 좀비를 거래할 수 있게 하기에는 가장 적절하다.
+
+> `ERC721`과 같은 표준을 사용하면 우리의 컨트랙트에서 사용자들이 우리의 좀비를 거래/판매할 수 있도록 하는 경매나 중계 로직을 우리가 직접 구현하지 않아도 된다는 이점이 있다. 우리가 스펙에 맞추기만 하면, 누군가 `ERC721` 자산을 거래할 수 있도록 하는 거래소 플랫폼을 만들면 우리의 `ERC721` 좀비들을 그 플랫폼에서 쓸 수 있게 될 것이다. 자신만의 거리 로직을 만드느라 고생하는 것보다 토큰 표준을 사용하는 것이 명확한 이점이 있다는 것이다.
+
+## **2. ERC721 표준, 다중 상속**
+
+`ERC721` 표준을 한번 같이 살펴보도록 하자 :
+```sol
+contract ERC721 {
+	event Transfer(address indexed _from, address indexed _to, uint256 _tokenId);
+	event Approval(address indexed _owner, address indexed _approved, uint256 _tokenId);
+	
+	function balanceOf(address _owner) public view returns (uint256 _balance);
+	function ownerOf(uint256 _tokenId) public view returns (address _owner);
+	function transfer(address _to, uint256 _tokenId) public;
+	function approve(address _to, uint256 _tokenId) public;
+	function takeOwnership(uint256 _tokenId) public;
+}
+```
+
+위 내용이 앞으로 남은 챕터들에서 구현해 나갈 메소드들의 목록이다.
+
+> 참고 : `ERC721` 표준은 현재 초안인 상태이고, 아직 공식적으로 채택된 구현 버전은 없다. 이 튜토리얼에서는 `OpenZeppelin` 라이브러리에서 쓰이는 현재 버전을 사용할 것이지만, 공식 릴리즈 이전에 언젠가 바뀔 가능성도 있다. 그러니 하나의 구현 가능한 버전 정도로만 생각하고, `ERC721 토큰`의 정식 표준으로 생각하지는 말자.
+
+### **토큰 컨트랙트 구현하기**
+
+토큰 컨트랙트를 구현할 때, 처음 해야 할 일은 바로 인터페이스를 솔리디티 파일로 따로 복사하여 저장하고 `import "./erc721.sol;`을 써서 import를 하는 것이다. 그리고 해당 컨트랙트를 상속하는 우리의 컨트랙트를 만들고, 각각의 함수를 오버라이딩하여 정의하여야 한다.
+
+그런데 여기서 잠깐 - `ZombieOwnership`은 이미 `ZombieAttack`을 상속하고 있다. 그렇다면 어떻게 `ERC721`도 상속하게 할 수 있을까?
+
+솔리디티에서는 다음과 같이 한 컨트랙트가 다수의 컨트랙트를 상속할 수 있다 :
+```sol
+contract SatoshiNakamoto is NickSzabo, HalFinney {
+
+}
+```
+
+다중 상속을 쓸 때는 상속하고자 하는 다수의 컨트랙트를 쉼표(`,`)로 구분하면 된다.
+
+## **3. balanceOf & ownerOf**
+
+### **balanceOf**
+
+```sol
+function balanceOf(address _onwer) public view returns (uint256 _balance);
+```
+
+이 함수는 단순히 `address`를 받아, 해당 `address`가 토큰을 얼마나 가지고 있는지 반환한다. 이 경우, 우리의 `토큰`은 좀비다.
+
+### **ownerOf**
+
+```sol
+function ownerOf(uint256 _tockenId) public view returns (address _owner);
+```
+
+이 함수에서는 `토큰 ID`(우리의 경우, 좀비 ID)를 받아, 이를 소유하고 있는 사람의 `address`를 반환한다.
+
+이 함수들은 구현하기가 매우 수월하다. 이 정보를 저장하는 `mapping`을 우리 `DApp`에 이미 가지고 있기 때문이다. 위에서 봤듯이, 이 함수들은 단 한 줄로 구현할 수 있다.
+
+> 참고 : `uint256`은 `uint`와 동일하다는 것을 기억하자. 우리 코드에서 지금까지 `uint`를 사용해왔지만, 여기서는 우리가 스펙을 복사/붙여넣기 했으니 `uint256`을 쓸 것이다.
+
+## **4. 리팩토링**
+
+이전 챕터에서 `ownerOf`라는 함수를 정의했다. 하지만 `lesson4`에서 우리는 `zombiefeeding.sol`에서 `ownerOf`와 똑같은 이름의 `modifier`를 만들었었다. 때문에 컴파일 시 에러가 날 것이다.
+
+그렇다면 `ZombieOwnership`의 함수 이름을 이름을 다른 걸로 바꿔야 할까?
+
+아니다. 우리는 `ERC721 토큰` 표준을 사용하고 있다. 이 말은 즉 다른 컨트랙트들이 우리의 컨트랙트가 정확한 이름으로 정의된 함수들을 가지고 있을 것이라 예상한다는 것이다. 그게 바로 이런 표준이 유용하게끔 하는 것이니 말이다. 만약 우리 컨트랙트가 `ERC721`을 따른다는 것을 다른 컨트랙트가 안다면, 이 다른 컨트랙트는 우리의 내부 구현 로직을 모르더라도 우리와 통신할 수 있다.
+
+그러니 `ownerOf` 함수의 이름을 바꾸는 것이 아니라, `lesson4`에서 만든 `modifer`의 이름을 다른 것으로 바꾸도록 리팩토링을 해야 한다.
+
+## **5. ERC721 : 전송 로직**
+
+이제 우리의 `ERC721`에서 한 사람이 다른 사람에게 소유권을 넘기는 것을 구현해 나갈 것이다.
+
+`ERC721` 스펙에서는 토큰을 전송할 때 2개의 다른 방식이 있음을 기억하자 :
+```sol
+function transfer(address _to, uint256 _tockenId) public;
+function approve(address _to, uint256 _tockenId) public;
+function takeOwnership(uint256 _tockenId) public;
+```
+
+1. 첫 번째 방법은 토큰의 소유자가 전송 상대의 `address`, 전송하고자 하는 `_tockenId`와 함께 `transfer`함수를 호출하는 것이다.
+
+2. 두 번째 방법은 토큰의 소유자가 먼저 위에서 본 정보들을 가지고 `approve`를 호출하는 것이다. 그리고서 컨트랙트에 누가 해당 토큰을 가질 수 있도록 허가를 받았는지 저장한다. 보통 `mapping (uint256 => address)`를 써서 말이지. 이후 누군가 `takeOwnership`을 호출하면, 해당 컨트랙트는 이 `msg.sender`가 소유자로부터 토큰을 받을 수 있게 허가를 받았는지 확인한다. 그리고 허가를 받았다면 해당 토큰을 그에게 전송한다.
+
+사실 `transfer`와 `takeOwnership` 모두 동일한 전송 로직을 가지고 있다. 순서만 반대인 것이다. 전자는 토큰을 보내는 사람이 함수를 호출하는 것이고 후자는 토큰을 받는 사람이 호출하는 것이다.
+
+그러니 이 로직만의 프라이빗 함수, `_transfer`를 만들어 추상화하는 것이 좋을 것이다. 두 함수에서 모두 쓸 수 있도록 말이다. 이렇게 하면 똑같은 코드를 두 번씩 쓰지 않아도 된다.
+
+### **`ERC721` : Transfer**
+
+```sol
+function _transfer(address _from, address _to, uint256 _tokenId) private {
+	ownerZombieCount[_to]++;
+	ownerZombieCount[_from]--;
+	zombieToOwner[_tokenId] = _to;
+	Transfer(_from, _to, _tokenId);
+}
+
+function transfer(address _to, uint256 _tokenId) public onlyOwnerOf(_tokenId) {
+	_transfer(msg.sender, _to, _tokenId);
+}
+```
+
+### **`ERC721` : Approve**
+
+`approve` / `takeOwnership`을 사용하는 전송은 2단계로 나뉜다 :
+1. 원래 소유자가 새로운 소유자의 `address`와 그에게 보내고 싶은 `_tokenId`를 사용하여 `approve`를 호출한다.
+
+2. 새로운 소유자가 `_tokenId`를 사용하여 `takeOwnership`함수를 호출하면, 컨트랙트는 그가 승인된 자인지 확인하고 그에게 토큰을 전송한다.
+
+이처럼 2번의 함수 호출이 발생하기 때문에, 우리는 함수 호출 사이에 누가 무엇에 대해 승인이 되었는지 저장할 데이터 구조가 필요할 것이다.
+
+```sol
+function approve(address _to, uint256 _tokenId) public onlyOwnerOf(_tokenId) {
+	zombieApprovals[_tokenId] = _to;
+	Approval(msg.sender, _to, _tokenId);
+}
+```
+
+### **`ERC721` : takeOwnership**
+
+`takeOwnership`함수에서는 `msg.sender`가 이 토큰/좀비를 가질 수 있도록 승인되었는지 확인하고, 승인이 되었다면 `_transfer`를 호출해야 한다.
+
+```sol
+function takeOwnership(uint256 _tokenId) public {
+	require(zombieApprovals[_tokenId] == msg.sender);
+	address owner = ownerOf(_tokenId);
+	_transfer(owner, msg.sender, _tokenId);
+}
+```
+
+## **6. 오버플로우 막기**
+
+### **컨트랙트 보안 강화 : 오버플로우와 언더플로우**
