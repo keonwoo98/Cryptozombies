@@ -166,3 +166,148 @@ function takeOwnership(uint256 _tokenId) public {
 ## **6. 오버플로우 막기**
 
 ### **컨트랙트 보안 강화 : 오버플로우와 언더플로우**
+
+스마트 컨트랙트를 작성할 때 인지하고 있어야 할 하나의 주요한 보안 기능은 오버플로우와 언더플로우를 막는 것이다.
+
+`uint8`에 저장할 수 있는 가장 큰 수는 이진수로 `11111111` (10진수로 2^8 - 1 = 255)이다. 만약 `11111111`에 1을 더하면 이 수는 `00000000`으로 돌아간다. 이것이 오버플로우이다.
+
+반대로 `0`에서 1을 빼면 255와 같아지는 것은 언더플로우이다. (`uint`에 부호가 없기 때문에 음수는 될 수 없다.)
+
+`uint256`을 쓴다면 오버플로우가 발생하지 않을 것 같지만 `DApp`에 예상치 못한 문제가 발생하지 않도록 컨트랙트에 보호 장치를 두는 것이 좋다.
+
+### **SafeMath 사용하기**
+
+이를 막기 위해, `OpenZeppelin`에서 기본적으로 이런 문제를 막아주는 `SafeMath`라고 하는 `라이브러리`를 만들었다.
+
+`라이브러리(Library)`는 솔리디티에서 특별한 종류의 컨트랙트이다. 이게 유용하게 사용되는 경우 중 하나는 기본(native) 데이터 타입에 함수를 붙일 때이다.
+
+예를 들어, `SafeMath` 라이브러리를 쓸 때는 `using SafeMath for uint256`이라는 구문을 사용할 것이다. `SafeMath` 라이브러리는 4개의 함수를 가지고 있다. `add`, `sub`, `mal`, `div` 이다. 그리고 이제 우리는 `uint256`에서 다음과 같이 이 함수들에 접근할 수 있다.
+
+```sol
+using SafeMath for uint256;
+
+uint256 a = 5;
+uint256 b = a.add(3); // 5 + 3 = 8
+uint256 c = a.mul(2); // 5 * 2 = 10
+```
+
+## 7. SafeMath
+
+`SafeMath` 내부 코드 :
+
+```sol
+library SafeMath {
+	
+	function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+		if (a == 0) {
+			return 0;
+		}
+		uint256 c = a * b;
+		assert(c / a == b);
+		return c;
+	}
+
+	function div(uint256 a, uint256 b) internal pure returns (uint256) {
+		// assert(b > 0);
+		// Solidity automatically throws when dividing by 0
+		uint256 c = a / b;
+		// assert(a == b * c + a % b);
+		// There is no case in which this doesn't hold
+		return c;
+	}
+
+	function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+		assert(b <= a);
+		return a - b;
+	}
+
+	fundtion add(uint256 a, uint256 b) internal pure returns (uint256) {
+		uint256 c = a + b;
+		assert(c >= a);
+		return c;
+	}
+}
+```
+
+먼저 `library` 키워드를 보자. 라이브러리는 `contract`와 비슷하지만 조금 다른 점이 있다. 우리의 경우에 라이브러리는 우리가 `using`키워드를 사용할 수 있게 해준다. 이를 통해 라이브러리의 메소드들을 다른 데이터 타입에 적용할 수 있다.
+
+```sol
+using SafeMath for uint;
+// 우리는 이제 이 메소드를 아무 uint에서나 쓸 수 있다.
+uint test = 2;
+test = test.mul(3); // test == 6
+test = test.add(5); // test == 11
+```
+
+`mul`과 `add` 함수는 각각 2개의 인수를 필요로 한다. 하지만 우리가 `using SafeMath for uint`를 선언할 때, 우리가 함수를 적용하는 `uint(test)`는 첫 번째 인수로 자동으로 전달된다.
+
+`SafeMath`가 어떤 것을 하는지 보기 위해 `add`함수의 내용을 살펴보자 :
+
+```sol
+function add(uint256 a, uint256 b) internal pure returns (uint256) {
+	uint256 c = a + b;
+	assert(c >= a);
+	return c;
+}
+```
+
+기본적으로 `add`는 그저 2개의 `uint`를 `+`처럼 더한다. 하지만 그 안에 `assert` 구문을 써서 그 합이 `a`보다 크도록 보장한다. 이것이 오버플로우를 막아주는 것이다.
+
+`assert`는 조건을 만족하지 않으면 에러를 발생시킨다는 점에서 `require`와 비슷하다. `assert`와 `require`의 차이점은, `require`는 함수 실행이 실패하면 남은 가스를 사용자에게 되돌려 주지만, `assert`는 그렇지 않다는 것이다. 즉 대부분은 `require`를 쓰고 싶을 것이다. `assert`는 일반적으로 코드가 심각하게 잘못 실행될 때 사용한다. (`uint` 오버플로우)
+
+간단히 말해, `SafeMath`의 `add`, `sub`, `mul`, `div`는 4개의 기본 수학 연산을 하는 함수이지만, 오버플로우나 언더플로우를 발생하면 에러를 발생시키는 것이다.
+
+### **현재 코드에 `SafeMath` 사용하기**
+
+오버플로우나 언더플로우를 막기 위해, 코드에서 `+`, `-`, `*`, `/`을 쓰는 곳을 찾아 `add`, `sub`, `mul`, `div`로 교체한다.
+
+예를 들어 :
+```sol
+myUint++;
+```
+대신
+```sol
+myUint = myUint.add(1);
+```
+
+작은 문제가 하나있다. `uint256`으로 선언된 데이터 타입은 위와 같이 수정해주면 되지만 `uint32`나 `uint16`으로 선언된 데이터 타입은 `SafeMath`의 `add` 메소드를 사용하면, 이 타입들을 `uint256`으로 바꿀 것이기 때문에 실제로 오버플로우를 막을 수 없다.
+
+이는 즉 `uint16` 과 `uint32`에서 오버플로우 / 언더플로우를 막기 위해 2개의 라이브러리를 더 만들어야 한다는 것을 의미한다. `SafeMath`와 정확히 같은 방식으로 `SafeMath16`과 `SafeMath32`를 데이터 타입만 바꿔서 만들었다.
+
+## **8. 주석**
+
+솔리디티에서 주석을 다는 것은 자바스크립트와 비슷하다.
+
+한 줄 주석 :  
+`// 주석 내용`  
+
+여러 줄 주석 :  
+`/*`  
+`주석`    
+`내용 `  
+`*/`  
+
+솔리디티 커뮤니티에서 표준으로 쓰이는 형식은 `natspec`이라 불린다. 아래와 같이 생겼다 :
+```SOL
+/// @title 기본적인 산수를 위한 컨트랙트
+/// @author H4XF13LD MORRIS 💯💯😎💯💯
+/// @notice 지금은 곱하기 함수만 추가한다.
+contract Math {
+	/// @notice 2개의 숫자를 곱한다.
+	/// @param x 첫 번쨰 uint.
+	/// @param y 두 번째 uint.
+	/// @return z (x * y) 곱의 값
+	/// @dev 이 함수는 현재 오버플로우를 확인하지 않는다.
+	function multiply(uint x, uint y) returns (uint z) {
+		// 이것은 일반적인 주석으로, natspec에 포함되지 않는다.
+    	z = x * y;
+	}
+}
+```
+
+`@notice`는 사용자에게 컨트랙트/함수가 무엇을 하는지 설명한다.
+
+`@dev`는 개발자에게 추가적인 상세 정보를 설명하기 위해 사용한다.
+
+`@param`과 `@return`은 함수에서 어떤 매개 변수와 반환값을 가지는지 설명한다.
+
