@@ -156,3 +156,54 @@ myContract.method.myMethod(123).send()
 
 ### **좀비 데이터 받기**
 
+이제 컨트랙트에서 데이터에 접근하기 위해 `call`을 사용하는 에졔를 살펴볼 것이다.
+
+우리가 좀비 배역을 `public`으로 만들었던 것을 기억하자 :
+
+```sol
+Zombie[] public zombies;
+```
+
+솔리디티에서 `public`으로 변수를 선언하면 자동으로 같은 이름의 퍼블릭 "getter" 함수를 만들어 낸다. 그러니 `ID 15`인 좀비를 찾길 원한다면, 변수를 함수인 것처럼 호출할 수 있다 : `zombies(15)`
+
+여기에 우리의 프론트엔드에서 좀비 `ID`를 받아 해당 좀비에 대해 컨트랙트에 질의를 보내고, 결과를 반환하는 자바스크립트 함수르 작성하는 방법이 있다 :
+
+> 참고 : 이번 레슨에서 우리가 사용하는 모든 코드 예제들은 콜백 대신 `Promise`를 사용하는 `Web3.js 1.0 버전`을 사용하고 있다. 만약 다른 튜토리얼에서 코드를 복사해온다면 같은 버전을 사용하고 있는지 확인해봐야 한다.
+
+```js
+function getZombieDetails(id) {
+	return cryptoZombies.methods.zombies(id).call()
+}
+
+// 함수를 호출하고 결과를 가지고 무언가를 처리 :
+getZombieDetails(15)
+.then(function(result) {
+	console.log("Zombie 15: " + JSON.stringify(result));
+});
+```
+
+여기서 일어나고 있는 것들을 알아보도록 하자.
+
+`cryptoZombies.methods.zombies(id).call()`은 `Web3 프로바이더`와 통신하여 우리 컨트랙트의 `Zombie[] public zombies`에서 인덱스가 `id`인 좀비를 반환하도록 할 것이다.
+
+이는 외구 서버로 `API`호출을 하는 것처럼 `비동기`적으로 일어난다는 것을 알아두자. 즉 `Web3`는 여기서 `Promise`를 반환한다.
+
+`Promise`가 만들어지면(이는 `Web3 프로바이더`로부터 응답을 받았다는 것을 의미) 우리 예제 코드는 `then`문장을 실행하고, 여기서 `result`를 콘솔에 로그로 기록한다.
+
+`result`는 다음과 같이 생긴 자바스크립트 객체가 될 것이다 :
+
+```js
+{
+	"name": "H4XF13LD MORRIS'S COOLER OLDER BROTHER",
+	"dna": "1337133713371337",
+	"level": "9999",
+	"readyTime": "1522498671",
+	"winCount": "999999999",
+	"lossCount": "0" // Obviously.
+}
+```
+
+이후 이 겍체를 해석하기 위한 프론트엔드 로직을 만들어 의미 있는 방향으로 이 객체를 프론트엔드에 표시할 것이다.
+
+## **5. 메타마스크 & 계정**
+
