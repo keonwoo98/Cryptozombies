@@ -236,7 +236,56 @@ var accountInterval = setInterval(function() {
 		updateInterface();
 	}
 }, 100);
+```
 
 여기서는 `userAccount`가 여전히 `web3.eth.accounts[0]`과 같은지 위해 100밀리초마다 확인하고 있다. (즉 사용자가 해당 계정을 활성화해 놓았는지 확인하는 것이다) 그렇지 않다면, `userAccount`에 현재 활성화된 계정을 다시 할당하고, 화면을 업데이트하기 위한 함수를 호출한다.
 
 ## **6. 좀비 군대 보여주기**
+
+컨트랙트로부터 받은 데이터를 실제로 보여줄 수 없다면 지금까지 한 것은 아직 완전하다고 할 수 없다.
+
+`React`나 `Vue.js` 같은 편리한 프론트엔드 프레임워크들이 있지만 여기서 이 것들을 다루기에는 너무 광범위하다.
+
+그래서 `CryptoZombies.io`의 초점을 이더리움과 스마트 컨트랙트에 맞추기 위해, 우리는 `jQuery`를 이용한 간단한 예제를 통해 어떻게 스마트 컨트랙트에서 전달받은 데이터를 파싱하고 표현할 수 있을지 살펴볼 것이다.
+
+### **좀비 데이터 보여주기 - 간단한 예제**
+
+현재 작업 중인 `html` 문서에 빈 `<div id="zombies"></div>`와 빈 `displayZombies`함수를 추가했다.
+
+지난 챕터에서 `startApp()` 내에서 `getZombiesByOwner`의 호출 결과를 써서 호출한 `displayZombies`를 떠올려 보자. 그 함수의 결과로 아래와 같이 생긴 좀비 `ID` 배열을 전달받을 수 있을 것이다 :
+
+```js
+[0, 13, 47]
+```
+
+따라서 `displayZombies`함수는 다음과 같은 것을 할 것이다 :
+
+1. 먼저 이미 무언가가 `#zombies` `div`의 안에 들어 있아면 이 `div`의 내용을 비운다. (이렇게 함녀 사용자가 그들의 활성화된 `MetaMask` 계정을 변경하면 새로운 좀비 군대를 로딩하기 전에 기존의 것을 삭제할 것이다.)
+
+2. 반복을 통해 각 `id`마다 `getZombieDetail(id)`를 호출해서 우리의 스마트 컨트랙트에서 좀비에 대한 모든 정보를 찾는다.
+
+3. 화면에 표시하기 위해 `HTML` 템플릿에 좀비에 대한 정보를 집어넣고, 해당 템플릿을 `#zombies` `div`에 붙여넣는다.
+
+여기서도 우린 기본 템플릿 엔진이 없는 `jQuery`를 이용하기 때문에, 보기 싫을 수 있지만, 다음의 간단한 예제처럼 각 좀비에 대한 정보를 출력할 수 있다 :
+
+```html
+// 우리 컨트랙트에서 좀비 상세 정보를 찾아, `zombie` 객체 변환
+getZombieDetails(id)
+.then(function(zombie) {
+	// HTML에 변수를 넣기 위해 ES6의 "template literal" 사용
+	// 각각을 #zombies div에 붙여넣기
+	$("#zombies").append(`<div class="zombie">
+		<ul>
+			<li>Name: ${zombie.name}</li>
+			<li>DNA: ${zombie.dna}</li>
+			<li>Level: ${zombie.level}</li>
+			<li>Wins: ${zombie.winCount}</li>
+			<li>Losses: ${zombie.lossCount}</li>
+			<li>Ready Time: ${zombie.readyTime}</li>
+		</ul>
+	</div>`);
+});
+```
+
+## **좀비 스프라이트는 어떻게 표현하나요?**
+
