@@ -302,3 +302,4 @@ var headSrc = "../assets/zombieparts/head-" + head + ".png"
 ```
 
 각 컴포넌트는 `CSS`의 절대 좌표 포지셔닝을 이용해 다른 이미지 위에 위치할 것이다.
+
