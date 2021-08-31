@@ -303,3 +303,64 @@ var headSrc = "../assets/zombieparts/head-" + head + ".png"
 
 각 컴포넌트는 `CSS`의 절대 좌표 포지셔닝을 이용해 다른 이미지 위에 위치할 것이다.
 
+
+## **7. 트랜잭션 보내기**
+
+이제 우리의 `UI`는 사용자의 메타마스크 계정을 감지하고, 자동으로 좀비 군대를 홈페이지에 표현할 것이다.
+
+이제 `send`함수를 이용해서 스마트 컨트랙트의 데이터를 변경하는 방법을 살펴보자.
+
+이 함수에는 `call`함수와는 꽤 다른 부분이 있다 :
+
+1. 트랜잭션을 전송(`send`)하려면 함수를 호출한 사람의 `from`주소가 필요하다. (솔리디티 코드에서는 `msg.sender`가 될 것이다.) 이는 우리 `DApp`의 사용자가 되아야 할 것이니, 메타마스크가 나타나 그들에게 서명을 하도록 할 것이다.
+
+2. 트랜잭션 전송(`send`)은 가스를 소모한다.
+
+3. 사용자가 트랜잭션 전송을 하고 난 후 실제로 블록체인에 적용될 때까지는 상당한 지연이 발생할 것이다. 트랜잭션이 블록에 포함될 때까지 기다려야 하는데, 이더리움의 평균 블록 시간이 15초이기 때문이다. 만약 이더리움에 보류 중인 거래가 많거나 사용자가 가스 가격을 지나치게 낮게 보낼 경우, 우리 트랜잭션이 블록에 포함되길 기다려야 하고 ,이는 몇 분씩 걸릴 수 있다.
+
+	그러니 이 코드의 비동기적 특성을 다루기 위한 로직이 필요하게 될 것이다.
+
+### **좀비 만들기**
+
+이제 사용자가 호출할 우리 컨트랙트 내의 첫번째 함수를 예제로 살펴보자 :
+
+```sol
+function createRandomZombie(string _name) public {
+	require(ownerZombieCount[msg.sender] == 0);
+	uint randDna = _generateRandomDna(_name);
+	randDna = randDna - randDna % 100;
+	_createZombie(_name, randDna);
+}
+```
+
+메타마스크를 사용해 `Web3.js`에서 위 함수를 호출하는 방법의 예제 :
+
+```js
+function createRandomZombie(name) {
+	// 시간이 꽤 걸릴 수 있으니, 트랜잭션이 보내졌다는 것을 유저가 알 수 있도록 UI를 업데이트해야 함
+	$("#txStatus").text("Creating new zombie on the blockchain. This may take a while...");
+	// 우리 컨트랙트에 전송하기:
+	return CryptoZombies.methods.createRandomZombie(name)
+	.send({ from: userAccount })
+	.on("receipt", function(receipt) {
+		$("#txStatus").text("Successfully created " + name + "!");
+		// 블록체인에 트랜잭션이 반영되었으며, UI를 다시 그려야 함
+		getZombiesByOwner(userAccount).then(displayZombies);
+	})
+	.on("error", function(error) {
+		// 사용자들에게 트랜잭션이 실패했음을 알려주기 위한 처리
+		$("#txStatus").text(error);
+	});
+}
+```
+
+위 함수는 우리의 `Web3` 프로바이더에게 트랜잭션을 전송(`send`)하고, 몇 가지 이벤트 리스너들을 연결한다 :
+
+* `receipt`는 트랜잭션이 이더리움의 블록에 포함될 때, 즉 좀비가 생성되고 우리의 컨트랙트에 저장되었을 때 발생하게 된다.
+* `error`는 트랜잭션이 블록에 포함되지 못했을 때, 예를 들어 사용자가 충분한 가스를 전송하지 않았을 때 발생하게 된다. 우리는 우리의 `UI`를 통해 사용자에게 트랜잭션이 전송되지 않았음을 알리고, 다시 시도할 수 있도록 할 것이다.
+
+> 참고 : `send`를 호출할 때 `gas`와 `gasPrice`를 선택적으로 지정할 수 있다. `.send({ from: userAccount, gas: 3000000 })`와 같이 말이다. 만약 지정하지 않는다면, 메타마스크는 사용자가 이 값들을 선택할 수 있도록 할 것이다.
+
+## **8. Payable 함수 호출하기**
+
+
