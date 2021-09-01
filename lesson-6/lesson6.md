@@ -354,7 +354,7 @@ function createRandomZombie(name) {
 }
 ```
 
-위 함수는 우리의 `Web3` 프로바이더에게 트랜잭션을 전송(`send`)하고, 몇 가지 이벤트 리스너들을 연결한다 :
+위 함수는 우리의 `Web3 프로바이더`에게 트랜잭션을 전송(`send`)하고, 몇 가지 이벤트 리스너들을 연결한다 :
 
 * `receipt`는 트랜잭션이 이더리움의 블록에 포함될 때, 즉 좀비가 생성되고 우리의 컨트랙트에 저장되었을 때 발생하게 된다.
 * `error`는 트랜잭션이 블록에 포함되지 못했을 때, 예를 들어 사용자가 충분한 가스를 전송하지 않았을 때 발생하게 된다. 우리는 우리의 `UI`를 통해 사용자에게 트랜잭션이 전송되지 않았음을 알리고, 다시 시도할 수 있도록 할 것이다.
@@ -363,4 +363,104 @@ function createRandomZombie(name) {
 
 ## **8. Payable 함수 호출하기**
 
+이제 `Web3.js`에서 특별한 처리가 필요한 다른 종류의 함수를 살펴볼 것이다. 바로 `payable`함수이다.
 
+### **레벨업!**
+
+`ZombieHelper`를 다시 생각해보면, 우린 사용자가 레벨업할 수 있는 곳에 `payable`함수를 추가했었다 :
+
+```sol
+function levelUp(uint _zombieId) external payable {
+	require(msg.value == levelUpFee);
+	zombies[_zombieId].level++;
+}
+```
+
+함수를 이용해 이더를 보내는 법은 간단하지만, 이더가 아니라 `wei`로 얼마를 보낼지 정해야하는 제한이 있다.
+
+### **Wei란?**
+
+`wei`는 이더의 가장 작은 하위 단위이다 - 하나의 이더는 10^18개의 `wie`이다.
+
+이건 세기에는 너무 많다. 하지만 운이 좋게도 `Web3.js`에는 이러한 작업을 해주는 변환 유틸리티가 있다.
+
+```js
+// 이렇게 하면 1 ETH를 Wei로 바꿀 것이다
+web3js.utils.toWei("1");
+```
+
+우리 `DApp`에서, 우리는 `levelUpFee = 0.001 ether`로 설정했다. 그러니 `levelUp`함수를 호출할 때, 아래의 코드를 써서 사용자가 `0.001`이더를 보내게 할 수 있다 :
+
+```js
+CryptoZombies.methods.levelUp(zombieId)
+.send({ from: userAccount, value: web3js.utils.toWei("0.001") })
+```
+
+## **9. 이벤트(Event) 구독하기**
+
+`Web3.js`를 통해 컨트랙트와 상호작용 하는 것은 꽤 간단하다. 한번 환경을 구축하고 나면, 함수를 호출하고 트랜잭션을 전송하는 것은 일반적인 웹 `API`와 크게 다르지 않다.
+
+여기 우리가 다루고자 하는 것이 하나 더 있다. 바로 컨트랙트에서 이벤트를 구독하는 것이다.
+
+### **새로운 좀비 수신하기**
+
+`zombiefactory.sol`을 다시 생각해보면, 새로운 좀비가 생성될 때마다 매번 호출되던 `NewZombie`라는 이벤트가 있었다 :
+
+```sol
+event NewZombie(uint zombieId, string name, uint dna);
+```
+
+`Web3.js`에서 이벤트를 구독하여 해당 이벤트가 발생할 때마다 `Web3 프로바이더`가 나의 코드 내의 어떠한 로직을 실행시키도록 할 수 있다 :
+
+```js
+cryptoZombies.events.NewZombie()
+.on("data", function(event) {
+	let zombie = event.returnValues;
+	// event.returnValue 객체에서 이 이벤트의 세 가지 반환 값에 접근할 수 있다 :
+	console.log("새로운 좀비가 태어났습니다!", zombie.zombieId, zombie.name, zombie.dna);
+}).on("error", console.error);
+```
+
+이건 `DApp`에서 어떤 좀비가 생성되든지 항상 알림을 보낼 거라는 걸 명심하자. 현재 사용자의 좀비만이 아니라는 것이다. 현재 사용자가 만든 것에 대해서만 알림을 보내고 싶다면 어떻게 해야할까?
+
+### **indexed 사용하기**
+
+이벤트를 필터링하고 현재 사용자와 연관된 변경만을 수신하기 위해, 우리의 `ERC721`을 구현할 때 `Transfer`이벤트에서 했던 것처럼 우리의 솔리디티 컨트랙트에 `indexed`키워드를 사용해야 한다.
+
+```sol
+event Transfer(address indexed _from, address indexed, _to, uint256 _tokenId);
+```
+
+이 경우, `_from`과 `_to`가 `indexed` 되어 있기 때문에, 우리 프론트엔드의 이벤트 리스너에서 이들을 필터링할 수 있다 :
+
+```js
+// filter를 사용해 _to가 userAccount와 같을 때만 코드를 실행
+cryptoZombies.events.Transfer({ filter: {_to: userAccount } })
+.on("data", function(evnet) {
+	let data = event.returnValues;
+	// 현재 사용자가 방금 좀비를 받았다
+	// 해당 좀비를 보여줄 수 있도록 UI를 업데이트할 수 있도록 여기에 추가
+}).on("error", console.error);
+```
+
+`event`와 `indexed`영역을 사용하는 것은 나의 컨트랙트에서 변화를 감지하고 프론트엔드에 반영할 수 있게 하는 유용한 방법이다.
+
+### **지난 이벤트에 대해 질의하기**
+
+우린 `getPastEvents`를 이용해 지난 이벤트들에 대해 질의를 하고, `fromBlock`과 `toBlock` 필터들을 이용해 이벤트 로그에 대한 시간 범위를 솔리디티에 전달할 수 있다. (여기서 block은 이더리움 블록 번호를 나타낸다.)
+
+```js
+cryptoZombies.getPastEvents("NewZombie", { fromBlock: 0, toBlock: "latest" })
+.then(function(events) {
+	// events는 우리가 위에서 했던 것처럼 반복 접근할 event 객체들의 배열이다.
+	// 이 코드는 생성된 모든 좀비의 목록을 우리가 받을 수 있게 할 것이다.
+});
+```
+
+위 메소드를 사용해서 시작 시간부터의 이벤트 로그들에 대해 질의를 할 수 있기 때문에, 이를 통해 흥미로운 사용 예시를 만들 수 있네: 이벤트를 저렴한 형태의 storage로 사용하는 것이다.
+
+다시 생각해보면, 데이터를 블록체인에 기록하는 것은 솔리디티에서 가장 비싼 비용을 지불하는 작업 중 하나였다. 하지만 이벤트를 이용하는 것은 가스 측면에서 훨씬 더 저렴하다.
+
+여기서 단점이 되는 부분은 스마트 컨트랙트 자체 안에서는 이벤트를 읽을 수 없다는 것이다. 하지만 히스토리로 블록체인에 기록하여 앱의 프론트엔드에서 읽기를 원하는 데이터가 있다면, 이는 새겨놓아야 할 중요한 사용 예시이다.
+
+예를 들어, 우린 이것을 좀비 전투의 히스토리 기록용으로 사용할 수 있다. 좀비가 다른 좀비를 공격할 때마다, 그리고 누군가 이길 때마다 우린 이벤트를 생성할 수 있다. 스마트 컨트랙트는 추후 결과를 계산할 때 이 데이터가 필요하지 않지만, 사용자들이 앱의 프론트엔드에서 찾아볼 수 있는 유용한 데이터이다.
