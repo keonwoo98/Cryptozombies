@@ -16,7 +16,7 @@
 ---
 * 크립토좀비는 학습자가 크립토 수집품 게임을 직접 만들어 봄으로써 Solidty로 스마트 컨트렉트를 작성하는 방법을 배우도록 하는 대화형 코딩 학습 프로그램이다.
 * 직접 게임을 만들며 Ethereum Dapp 코딩을 배울 수 있다.
-* [링크](https://cryptozombies.io/)
+* [링크](https://cryptozombies.io/ko/)
 
 &nbsp;
 
