@@ -1,5 +1,6 @@
 # **Cryptozombies**
 
+![crypto_zombies](https://user-images.githubusercontent.com/76714659/147354805-579afc4d-e84b-4fab-8563-c893a4aabdd7.png)
 
 ## **Contents**
 ---
